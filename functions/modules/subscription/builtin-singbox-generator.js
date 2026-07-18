@@ -120,6 +120,15 @@ function buildOutbound(proxy) {
                     short_id: reality['short-id'] || reality.short_id
                 }
             };
+        } else if (proxy.tls || proxy.sni || proxy.servername || proxy['skip-cert-verify']) {
+            outbound.tls = {
+                enabled: true,
+                server_name: proxy.sni || proxy.servername || server,
+                insecure: Boolean(proxy['skip-cert-verify'] || proxy.skipCertVerify)
+            };
+            if (proxy['client-fingerprint']) {
+                outbound.tls.utls = { enabled: true, fingerprint: proxy['client-fingerprint'] };
+            }
         }
     } else if (type === 'trojan') {
         outbound.type = 'trojan';
@@ -145,7 +154,8 @@ function buildOutbound(proxy) {
         outbound.password = proxy.password || '';
         outbound.tls = {
             enabled: true,
-            server_name: proxy.sni || proxy.servername || server
+            server_name: proxy.sni || proxy.servername || server,
+            insecure: Boolean(proxy['skip-cert-verify'] || proxy.skipCertVerify)
         };
         if (proxy.alpn) outbound.tls.alpn = Array.isArray(proxy.alpn) ? proxy.alpn : [proxy.alpn];
         if (proxy.fingerprint) outbound.tls.certificate_public_key_sha256 = [proxy.fingerprint];
@@ -189,10 +199,14 @@ function buildOutbound(proxy) {
         outbound.password = proxy.password || '';
         outbound.tls = {
             enabled: true,
-            server_name: proxy.sni || proxy.servername || server
+            server_name: proxy.sni || proxy.servername || server,
+            insecure: Boolean(proxy['skip-cert-verify'] || proxy.skipCertVerify)
         };
         if (proxy.alpn) outbound.tls.alpn = Array.isArray(proxy.alpn) ? proxy.alpn : [proxy.alpn];
         if (proxy.fingerprint) outbound.tls.certificate_public_key_sha256 = [proxy.fingerprint];
+        if (proxy['client-fingerprint']) {
+            outbound.tls.utls = { enabled: true, fingerprint: proxy['client-fingerprint'] };
+        }
         if (proxy['idle-session-check-interval'] !== undefined) {
             outbound.idle_session_check_interval = `${proxy['idle-session-check-interval']}s`;
         }
