@@ -165,11 +165,15 @@ export function convertClashProxyToUrl(proxy) {
                 const alpn = Array.isArray(proxy.alpn) ? proxy.alpn.join(',') : proxy.alpn;
                 params.push(`alpn=${encodeURIComponent(alpn)}`);
             }
-            if (proxy['client-fingerprint'] || proxy.fingerprint) {
-                params.push(`fp=${encodeURIComponent(proxy['client-fingerprint'] || proxy.fingerprint)}`);
+            if (proxy['client-fingerprint']) {
+                params.push(`fp=${encodeURIComponent(proxy['client-fingerprint'])}`);
+            }
+            if (proxy.fingerprint) {
+                params.push(`fingerprint=${encodeURIComponent(proxy.fingerprint)}`);
             }
             if (proxy.skipCertVerify || proxy['skip-cert-verify']) params.push('insecure=1');
-            if (proxy.ports) params.push(`ports=${encodeURIComponent(proxy.ports)}`);
+            const portHopping = proxy.ports || proxy.mport;
+            if (portHopping) params.push(`ports=${encodeURIComponent(portHopping)}`);
             if (proxy.up || proxy['up-mbps']) params.push(`up=${encodeURIComponent(proxy.up || proxy['up-mbps'])}`);
             if (proxy.down || proxy['down-mbps']) params.push(`down=${encodeURIComponent(proxy.down || proxy['down-mbps'])}`);
             if (proxy['fast-open'] !== undefined) params.push(`fast-open=${proxy['fast-open'] ? '1' : '0'}`);
@@ -239,6 +243,14 @@ export function convertClashProxyToUrl(proxy) {
             }
             if (proxy['skip-cert-verify']) params.push('insecure=1');
             if (proxy.padding !== undefined) params.push(`padding=${proxy.padding ? '1' : '0'}`);
+            if (proxy['client-fingerprint']) params.push(`fp=${encodeURIComponent(proxy['client-fingerprint'])}`);
+            if (proxy.fingerprint) params.push(`fingerprint=${encodeURIComponent(proxy.fingerprint)}`);
+            if (proxy['idle-session-check-interval'] !== undefined) {
+                params.push(`idle-session-check-interval=${encodeURIComponent(proxy['idle-session-check-interval'])}`);
+            }
+            if (proxy['idle-session-timeout'] !== undefined) {
+                params.push(`idle-session-timeout=${encodeURIComponent(proxy['idle-session-timeout'])}`);
+            }
             const pinnedPeerCertSha256 = proxy.pinnedPeerCertSha256 || proxy['pinned-peer-cert-sha256'] || proxy['peer-cert-sha256'] || proxy.certSha256;
             if (pinnedPeerCertSha256) params.push(`pinnedPeerCertSha256=${encodeURIComponent(pinnedPeerCertSha256)}`);
             const query = params.length > 0 ? `?${params.join('&')}` : '';
