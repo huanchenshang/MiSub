@@ -6,6 +6,11 @@ function base64UrlSafeEncode(str) {
     return base64Encode(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
+function formatUrlServer(server) {
+    const value = String(server || '');
+    return value.includes(':') && !value.startsWith('[') ? `[${value}]` : value;
+}
+
 function appendHysteria2RealmParams(params, realmOpts) {
     if (!realmOpts || typeof realmOpts !== 'object') return;
     if (realmOpts['realm-id']) params.push(`realm-id=${encodeURIComponent(realmOpts['realm-id'])}`);
@@ -154,11 +159,23 @@ export function convertClashProxyToUrl(proxy) {
             const password = proxy.password || proxy.auth || '';
             if (proxy.obfs) params.push(`obfs=${encodeURIComponent(proxy.obfs)}`);
             if (proxy['obfs-password']) params.push(`obfs-password=${encodeURIComponent(proxy['obfs-password'])}`);
-            if (proxy.sni !== undefined) params.push(`sni=${encodeURIComponent(proxy.sni)}`);
+            const sni = proxy.servername !== undefined ? proxy.servername : proxy.sni;
+            if (sni !== undefined) params.push(`sni=${encodeURIComponent(sni)}`);
+            if (proxy.alpn) {
+                const alpn = Array.isArray(proxy.alpn) ? proxy.alpn.join(',') : proxy.alpn;
+                params.push(`alpn=${encodeURIComponent(alpn)}`);
+            }
+            if (proxy['client-fingerprint'] || proxy.fingerprint) {
+                params.push(`fp=${encodeURIComponent(proxy['client-fingerprint'] || proxy.fingerprint)}`);
+            }
             if (proxy.skipCertVerify || proxy['skip-cert-verify']) params.push('insecure=1');
+            if (proxy.ports) params.push(`ports=${encodeURIComponent(proxy.ports)}`);
+            if (proxy.up || proxy['up-mbps']) params.push(`up=${encodeURIComponent(proxy.up || proxy['up-mbps'])}`);
+            if (proxy.down || proxy['down-mbps']) params.push(`down=${encodeURIComponent(proxy.down || proxy['down-mbps'])}`);
+            if (proxy['fast-open'] !== undefined) params.push(`fast-open=${proxy['fast-open'] ? '1' : '0'}`);
             appendHysteria2RealmParams(params, proxy['realm-opts']);
             const query = params.length > 0 ? `?${params.join('&')}` : '';
-            return `hysteria2://${encodeURIComponent(password)}@${server}:${port}${query}#${encodeURIComponent(name)}`;
+            return `hysteria2://${encodeURIComponent(password)}@${formatUrlServer(server)}:${port}${query}#${encodeURIComponent(name)}`;
         }
 
         if (type === 'hysteria') {
@@ -214,15 +231,16 @@ export function convertClashProxyToUrl(proxy) {
         if (type === 'anytls') {
             const password = proxy.password || '';
             const params = [];
-            if (proxy.sni !== undefined) params.push(`sni=${encodeURIComponent(proxy.sni)}`);
+            const sni = proxy.servername !== undefined ? proxy.servername : proxy.sni;
+            if (sni !== undefined) params.push(`sni=${encodeURIComponent(sni)}`);
             if (proxy.alpn) {
                 const alpn = Array.isArray(proxy.alpn) ? proxy.alpn.join(',') : proxy.alpn;
                 params.push(`alpn=${encodeURIComponent(alpn)}`);
             }
             if (proxy['skip-cert-verify']) params.push('insecure=1');
+            if (proxy.padding !== undefined) params.push(`padding=${proxy.padding ? '1' : '0'}`);
             const pinnedPeerCertSha256 = proxy.pinnedPeerCertSha256 || proxy['pinned-peer-cert-sha256'] || proxy['peer-cert-sha256'] || proxy.certSha256;
             if (pinnedPeerCertSha256) params.push(`pinnedPeerCertSha256=${encodeURIComponent(pinnedPeerCertSha256)}`);
-            if (proxy.padding !== undefined) params.push(`padding=${proxy.padding}`);
             const query = params.length > 0 ? `?${params.join('&')}` : '';
             return `anytls://${encodeURIComponent(password)}@${server}:${port}${query}#${encodeURIComponent(name)}`;
         }
