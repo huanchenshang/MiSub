@@ -650,8 +650,10 @@ function parseHysteria2Url(url) {
             proxy.sni = sni;
         }
         if (params.get('alpn')) proxy.alpn = params.get('alpn').split(',').map(value => value.trim()).filter(Boolean);
-        const fingerprint = params.get('fp') || params.get('fingerprint');
-        if (fingerprint) proxy['client-fingerprint'] = fingerprint;
+        const clientFingerprint = params.get('fp');
+        if (clientFingerprint) proxy['client-fingerprint'] = clientFingerprint;
+        const fingerprint = params.get('fingerprint') || params.get('pinSHA256');
+        if (fingerprint) proxy.fingerprint = fingerprint;
 
         // Skip cert verify
         if (params.get('insecure') === '1' || params.get('allowInsecure') === '1') {
@@ -1059,11 +1061,20 @@ function parseAnytlsUrl(url) {
         if (params.get('alpn')) proxy.alpn = params.get('alpn').split(',').map(value => value.trim()).filter(Boolean);
         if (params.get('insecure') === '1' || params.get('allowInsecure') === '1') proxy['skip-cert-verify'] = true;
         if (params.get('padding') !== null) proxy.padding = params.get('padding') === '1' || params.get('padding') === 'true';
+        const clientFingerprint = params.get('fp');
+        if (clientFingerprint) proxy['client-fingerprint'] = clientFingerprint;
+        const fingerprint = params.get('fingerprint');
+        if (fingerprint) proxy.fingerprint = fingerprint;
         const pinnedPeerCertSha256 = params.get('pinnedPeerCertSha256')
             || params.get('pinned-peer-cert-sha256')
             || params.get('peer-cert-sha256')
             || params.get('certSha256');
         if (pinnedPeerCertSha256) proxy.pinnedPeerCertSha256 = pinnedPeerCertSha256;
+
+        const idleCheckInterval = params.get('idle-session-check-interval');
+        const idleTimeout = params.get('idle-session-timeout');
+        if (idleCheckInterval !== null) proxy['idle-session-check-interval'] = Number(idleCheckInterval);
+        if (idleTimeout !== null) proxy['idle-session-timeout'] = Number(idleTimeout);
 
         proxy.udp = true;
         return proxy;
