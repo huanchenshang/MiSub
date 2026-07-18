@@ -60,21 +60,28 @@ function base64Decode(str) {
  * @returns {{server: string, port: number}}
  */
 function parseHostPort(hostPort) {
-    // 处理 IPv6: [::1]:port
+    // 处理 IPv6: [::1]:port；同时保留 Hysteria 的端口跳跃范围/列表
+    const normalizePort = value => {
+        const raw = String(value || '').trim();
+        if (!raw) return 443;
+        return /^\d+$/.test(raw) ? parseInt(raw, 10) : raw;
+    };
+
     if (hostPort.startsWith('[')) {
         const closeBracket = hostPort.indexOf(']');
         if (closeBracket !== -1) {
             const server = hostPort.substring(1, closeBracket);
             const after = hostPort.substring(closeBracket + 1);
-            const port = after.startsWith(':') ? parseInt(after.substring(1)) : 443;
+            const port = after.startsWith(':') ? normalizePort(after.substring(1)) : 443;
             return { server, port };
         }
     }
 
-    const parts = hostPort.split(':');
+    const separator = hostPort.lastIndexOf(':');
+    if (separator === -1) return { server: hostPort, port: 443 };
     return {
-        server: parts[0],
-        port: parseInt(parts[1]) || 443
+        server: hostPort.substring(0, separator),
+        port: normalizePort(hostPort.substring(separator + 1))
     };
 }
 
@@ -631,16 +638,29 @@ function parseHysteria2Url(url) {
             password
         };
 
-        // SNI
-        if (params.get('sni')) {
-            proxy.servername = params.get('sni');
-            proxy.sni = params.get('sni');
+        // SNI / ALPN / TLS fingerprint
+        const sni = params.get('sni') || params.get('peer');
+        if (sni) {
+            proxy.servername = sni;
+            proxy.sni = sni;
         }
+        if (params.get('alpn')) proxy.alpn = params.get('alpn').split(',').map(value => value.trim()).filter(Boolean);
+        const fingerprint = params.get('fp') || params.get('fingerprint');
+        if (fingerprint) proxy['client-fingerprint'] = fingerprint;
 
         // Skip cert verify
         if (params.get('insecure') === '1' || params.get('allowInsecure') === '1') {
             proxy['skip-cert-verify'] = true;
         }
+
+        // Hysteria2 transport options
+        const ports = params.get('ports') || params.get('port-hopping');
+        if (ports) proxy.ports = ports;
+        const up = params.get('up') || params.get('up-mbps') || params.get('upmbps');
+        const down = params.get('down') || params.get('down-mbps') || params.get('downmbps');
+        if (up) proxy.up = up;
+        if (down) proxy.down = down;
+        if (params.get('fast-open') !== null) proxy['fast-open'] = params.get('fast-open') === '1' || params.get('fast-open') === 'true';
 
         // Obfs
         if (params.get('obfs')) {
@@ -1031,8 +1051,9 @@ function parseAnytlsUrl(url) {
             proxy.sni = sni;
         }
         
-        if (params.get('alpn')) proxy.alpn = params.get('alpn').split(',');
+        if (params.get('alpn')) proxy.alpn = params.get('alpn').split(',').map(value => value.trim()).filter(Boolean);
         if (params.get('insecure') === '1' || params.get('allowInsecure') === '1') proxy['skip-cert-verify'] = true;
+        if (params.get('padding') !== null) proxy.padding = params.get('padding') === '1' || params.get('padding') === 'true';
         const pinnedPeerCertSha256 = params.get('pinnedPeerCertSha256')
             || params.get('pinned-peer-cert-sha256')
             || params.get('peer-cert-sha256')
