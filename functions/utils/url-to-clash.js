@@ -314,7 +314,7 @@ function parseTrojanUrl(url) {
         }
 
         // Skip cert verify
-        if (params.get('allowInsecure') === '1') {
+        if (params.get('allowInsecure') === '1' || params.get('allow_insecure') === '1' || params.get('insecure') === '1') {
             proxy['skip-cert-verify'] = true;
         }
 
@@ -703,6 +703,50 @@ return proxy;
 console.error('解析 Hysteria2 URL 失败:', e);
 return null;
 }
+}
+
+/**
+ * 将旧版 Hysteria URL 转换为 Clash 代理对象
+ * @param {string} url - Hysteria URL
+ * @returns {Object|null} Clash 代理对象
+ */
+function parseHysteriaUrl(url) {
+    try {
+        const body = url.substring('hysteria://'.length);
+        const atIndex = body.indexOf('@');
+        if (atIndex === -1) return null;
+
+        let password = decodeURIComponent(body.substring(0, atIndex));
+        let serverPart = body.substring(atIndex + 1);
+        const queryIndex = serverPart.indexOf('?');
+        const hashIndex = serverPart.indexOf('#');
+        if (queryIndex !== -1) serverPart = serverPart.substring(0, queryIndex);
+        else if (hashIndex !== -1) serverPart = serverPart.substring(0, hashIndex);
+
+        const { server, port } = parseHostPort(serverPart);
+        const params = parseQueryParams(url);
+        const name = extractName(url);
+        const proxy = { name: name || `Hysteria-${server}`, type: 'hysteria', server, port, password, udp: true };
+
+        if (params.get('protocol')) proxy.protocol = params.get('protocol');
+        const sni = params.get('sni') || params.get('peer');
+        if (sni) {
+            proxy.sni = sni;
+            proxy.servername = sni;
+        }
+        if (params.get('alpn')) proxy.alpn = params.get('alpn').split(',').map(value => value.trim()).filter(Boolean);
+        if (params.get('insecure') === '1' || params.get('allowInsecure') === '1' || params.get('allow_insecure') === '1') {
+            proxy['skip-cert-verify'] = true;
+        }
+        const up = params.get('up') || params.get('up-mbps');
+        const down = params.get('down') || params.get('down-mbps');
+        if (up) proxy.up = up;
+        if (down) proxy.down = down;
+        return proxy;
+    } catch (e) {
+        console.error('解析 Hysteria URL 失败:', e);
+        return null;
+    }
 }
 
 /**
@@ -1332,6 +1376,8 @@ export function urlToClashProxy(url) {
         return parseSsUrl(url);
     } else if (lowerUrl.startsWith('hysteria2://') || lowerUrl.startsWith('hy2://')) {
         return parseHysteria2Url(url);
+    } else if (lowerUrl.startsWith('hysteria://')) {
+        return parseHysteriaUrl(url);
     } else if (lowerUrl.startsWith('tuic://')) {
         return parseTuicUrl(url);
     } else if (lowerUrl.startsWith('snell://')) {
