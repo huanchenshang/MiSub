@@ -147,6 +147,19 @@ function buildOutbound(proxy) {
             enabled: true,
             server_name: proxy.sni || proxy.servername || server
         };
+        if (proxy.alpn) outbound.tls.alpn = Array.isArray(proxy.alpn) ? proxy.alpn : [proxy.alpn];
+        if (proxy.fingerprint) outbound.tls.certificate_public_key_sha256 = [proxy.fingerprint];
+        if (proxy.obfs) {
+            outbound.obfs = {
+                type: proxy.obfs,
+                password: proxy['obfs-password'] || ''
+            };
+        }
+        const hopPorts = proxy.ports || proxy.mport;
+        if (hopPorts) outbound.hop_ports = String(hopPorts);
+        if (proxy['hop-interval']) outbound.hop_interval = proxy['hop-interval'];
+        if (proxy.up || proxy['up-mbps']) outbound.up_mbps = Number(proxy.up || proxy['up-mbps']);
+        if (proxy.down || proxy['down-mbps']) outbound.down_mbps = Number(proxy.down || proxy['down-mbps']);
     } else if (type === 'tuic') {
         outbound.type = 'tuic';
         outbound.server = server;
@@ -178,6 +191,15 @@ function buildOutbound(proxy) {
             enabled: true,
             server_name: proxy.sni || proxy.servername || server
         };
+        if (proxy.alpn) outbound.tls.alpn = Array.isArray(proxy.alpn) ? proxy.alpn : [proxy.alpn];
+        if (proxy.fingerprint) outbound.tls.certificate_public_key_sha256 = [proxy.fingerprint];
+        if (proxy['idle-session-check-interval'] !== undefined) {
+            outbound.idle_session_check_interval = `${proxy['idle-session-check-interval']}s`;
+        }
+        if (proxy['idle-session-timeout'] !== undefined) {
+            outbound.idle_session_timeout = `${proxy['idle-session-timeout']}s`;
+        }
+        if (proxy.padding !== undefined) outbound.padding = Boolean(proxy.padding);
     } else if (type === 'snell') {
         outbound.type = 'snell';
         outbound.server = server;
