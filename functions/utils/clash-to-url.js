@@ -38,10 +38,14 @@ export function convertClashProxyToUrl(proxy) {
                 params.push(`plugin=${encodeURIComponent(proxy.plugin)}`);
                 const pluginOpts = proxy['plugin-opts'];
                 if (pluginOpts) {
-                    if (pluginOpts.enabled !== undefined) params.push(`enabled=${pluginOpts.enabled}`);
+                        if (pluginOpts.enabled !== undefined) params.push(`enabled=${pluginOpts.enabled}`);
                     if (pluginOpts.padding !== undefined) params.push(`padding=${pluginOpts.padding}`);
                     if (pluginOpts.mode) params.push(`obfs=${encodeURIComponent(pluginOpts.mode)}`);
                     if (pluginOpts.host) params.push(`obfs-host=${encodeURIComponent(pluginOpts.host)}`);
+                    for (const [key, value] of Object.entries(pluginOpts)) {
+                        if (['enabled', 'padding', 'mode', 'host'].includes(key)) continue;
+                        if (value !== undefined && value !== null) params.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+                    }
                 }
                 if (params.length > 0) url += `?${params.join('&')}`;
             }
@@ -111,7 +115,13 @@ export function convertClashProxyToUrl(proxy) {
                 if (wsOpts.path) params.push(`path=${encodeURIComponent(wsOpts.path)}`);
                 if (wsOpts.headers?.Host) params.push(`host=${encodeURIComponent(wsOpts.headers.Host)}`);
             }
-            if (proxy.sni !== undefined) params.push(`sni=${encodeURIComponent(proxy.sni)}`);
+            const sni = proxy.servername !== undefined ? proxy.servername : proxy.sni;
+            if (sni !== undefined) params.push(`sni=${encodeURIComponent(sni)}`);
+            if (proxy.alpn) {
+                const alpn = Array.isArray(proxy.alpn) ? proxy.alpn.join(',') : proxy.alpn;
+                params.push(`alpn=${encodeURIComponent(alpn)}`);
+            }
+            if (proxy['client-fingerprint']) params.push(`fp=${encodeURIComponent(proxy['client-fingerprint'])}`);
             if (proxy.skipCertVerify || proxy['skip-cert-verify']) params.push('allowInsecure=1');
             const query = params.length > 0 ? `?${params.join('&')}` : '';
             return `trojan://${encodeURIComponent(proxy.password)}@${server}:${port}${query}#${encodeURIComponent(name)}`;
@@ -136,6 +146,12 @@ export function convertClashProxyToUrl(proxy) {
             if (httpupgradeOpts) {
                 if (httpupgradeOpts.path) params.push(`path=${encodeURIComponent(httpupgradeOpts.path)}`);
                 if (httpupgradeOpts.host) params.push(`host=${encodeURIComponent(httpupgradeOpts.host)}`);
+            }
+            const xhttpOpts = proxy['xhttp-opts'] || proxy.xhttpOpts;
+            if (xhttpOpts) {
+                if (xhttpOpts.path) params.push(`xhttp-path=${encodeURIComponent(xhttpOpts.path)}`);
+                if (xhttpOpts.host) params.push(`xhttp-host=${encodeURIComponent(xhttpOpts.host)}`);
+                if (xhttpOpts.mode) params.push(`mode=${encodeURIComponent(xhttpOpts.mode)}`);
             }
             const realityOpts = proxy['reality-opts'];
             if (realityOpts) {
@@ -186,7 +202,12 @@ export function convertClashProxyToUrl(proxy) {
             const params = [];
             const password = proxy.password || proxy.auth || '';
             if (proxy.protocol === 'udp') params.push('protocol=udp');
-            if (proxy.sni !== undefined) params.push(`sni=${encodeURIComponent(proxy.sni)}`);
+            const sni = proxy.servername !== undefined ? proxy.servername : proxy.sni;
+            if (sni !== undefined) params.push(`sni=${encodeURIComponent(sni)}`);
+            if (proxy.alpn) {
+                const alpn = Array.isArray(proxy.alpn) ? proxy.alpn.join(',') : proxy.alpn;
+                params.push(`alpn=${encodeURIComponent(alpn)}`);
+            }
             if (proxy.skipCertVerify || proxy['skip-cert-verify']) params.push('insecure=1');
             if (proxy.up || proxy['up-mbps']) params.push(`up=${proxy.up || proxy['up-mbps']}`);
             if (proxy.down || proxy['down-mbps']) params.push(`down=${proxy.down || proxy['down-mbps']}`);
@@ -194,9 +215,15 @@ export function convertClashProxyToUrl(proxy) {
             return `hysteria://${encodeURIComponent(password)}@${server}:${port}${query}#${encodeURIComponent(name)}`;
         }
 
-        if (type === 'socks5') {
+        if (type === 'socks5' || type === 'socks5-tls') {
             const auth = proxy.username && proxy.password ? `${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@` : '';
-            return `socks5://${auth}${server}:${port}#${encodeURIComponent(name)}`;
+            const params = [];
+            if (type === 'socks5-tls') params.push('tls=1');
+            const sni = proxy.servername !== undefined ? proxy.servername : proxy.sni;
+            if (sni) params.push(`sni=${encodeURIComponent(sni)}`);
+            if (proxy['skip-cert-verify']) params.push('allowInsecure=1');
+            const query = params.length > 0 ? `?${params.join('&')}` : '';
+            return `socks5://${auth}${formatUrlServer(server)}:${port}${query}#${encodeURIComponent(name)}`;
         }
 
         if (type === 'http') {
