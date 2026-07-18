@@ -62,9 +62,14 @@ function base64Decode(str) {
 function parseHostPort(hostPort) {
     // 处理 IPv6: [::1]:port；同时保留 Hysteria 的端口跳跃范围/列表
     const normalizePort = value => {
-        const raw = String(value || '').trim();
+        const raw = String(value || '').trim().replace(/\/+$/, '');
         if (!raw) return 443;
-        return /^\d+$/.test(raw) ? parseInt(raw, 10) : raw;
+
+        // Clash/Mihomo 的 proxy.port 必须是整数。
+        // 部分 Hysteria 订阅会把端口写成 `50000/`、`50000-50100`，
+        // 端口跳跃范围应放在 ports 字段，port 使用起始端口。
+        const firstPort = raw.match(/^\d+/)?.[0];
+        return firstPort ? parseInt(firstPort, 10) : 443;
     };
 
     if (hostPort.startsWith('[')) {
