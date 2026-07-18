@@ -582,8 +582,24 @@ proxies:
             for (const part of fixture.requiredParts) {
                 expect(url).toContain(part);
             }
-            expect(urlToClashProxy(url)).toBeNull();
-            expect(urlsToClashProxies([url])).toEqual([]);
+            if (fixture.proxy.type === 'hysteria') {
+                expect(urlToClashProxy(url)).toMatchObject({
+                    name: fixture.proxy.name,
+                    type: 'hysteria',
+                    server: fixture.proxy.server,
+                    port: fixture.proxy.port,
+                    password: fixture.proxy.password,
+                    protocol: fixture.proxy.protocol,
+                    sni: fixture.proxy.sni,
+                    servername: fixture.proxy.sni,
+                    'skip-cert-verify': true,
+                    up: String(fixture.proxy.up),
+                    down: String(fixture.proxy.down)
+                });
+            } else {
+                expect(urlToClashProxy(url)).toBeNull();
+                expect(urlsToClashProxies([url])).toEqual([]);
+            }
         }
     });
 });
