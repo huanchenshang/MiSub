@@ -1,32 +1,11 @@
 <script setup>
-import { computed } from 'vue';
 import { useUIStore } from '../../stores/ui.js';
-import { useSessionStore } from '../../stores/session.js';
 import BrandLogo from './BrandLogo.vue';
 import NavActionGroup from './NavActionGroup.vue';
 import { useI18n } from '../../i18n/index.js';
 
 const uiStore = useUIStore();
-const sessionStore = useSessionStore();
 const { t } = useI18n();
-
-const shouldHideLoginButton = computed(() => {
-  if (sessionStore.sessionState === 'loading') {
-    return true;
-  }
-
-  const rawPath = sessionStore.publicConfig?.customLoginPath;
-  if (!rawPath || typeof rawPath !== 'string') {
-    return false;
-  }
-
-  const normalizedPath = rawPath.trim().replace(/^\/+/, '');
-  if (!normalizedPath || normalizedPath === 'login') {
-    return false;
-  }
-
-  return true;
-});
 
 const props = defineProps({
   isLoggedIn: Boolean,
@@ -55,7 +34,7 @@ const emit = defineEmits(['logout']);
             :is-logged-in="isLoggedIn"
             :show-explore="false"
             :show-settings="true"
-            :show-login-button="!shouldHideLoginButton"
+            :show-login-button="true"
             :hide-external-repo="hideBranding"
             :with-focus-ring="true"
             rounded-class="misub-radius-md"
